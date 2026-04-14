@@ -1,0 +1,1476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Construction Site Safety Detection</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:     #07090f;
+  --bg2:    #0b0e19;
+  --bg3:    #0f1320;
+  --card:   rgba(15, 20, 35, 0.72);
+  --card2:  rgba(18, 25, 44, 0.80);
+  --border: rgba(0, 200, 255, 0.09);
+  --border2:rgba(0, 200, 255, 0.17);
+  --cyan:   #00c8ff;
+  --purple: #a855f7;
+  --amber:  #f59e0b;
+  --green:  #22c55e;
+  --red:    #ef4444;
+  --text:   #e2e8f0;
+  --text2:  #94a3b8;
+  --text3:  #4b5a6e;
+  --sidebar-w: 256px;
+  --radius: 12px;
+  --font:   'Space Grotesk', sans-serif;
+  --mono:   'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: rgba(0,200,255,0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,200,255,0.45); }
+
+/* ── SIDEBAR ─────────────────────────────── */
+#sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: rgba(7,9,16,0.97);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 28px rgba(0,0,0,0.6);
+  display: flex; flex-direction: column;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.logo-area {
+  padding: 22px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex; align-items: center; gap: 12px;
+}
+.logo-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: linear-gradient(135deg, rgba(0,200,255,0.18), rgba(168,85,247,0.18));
+  border: 1px solid rgba(0,200,255,0.28);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 14px rgba(0,200,255,0.18);
+}
+.logo-icon i { color: var(--cyan); font-size: 15px; }
+.logo-title {
+  font-size: 13px; font-weight: 700;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  line-height: 1.3;
+}
+.logo-ver { font-size: 10px; color: var(--text3); letter-spacing: 0.07em; text-transform: uppercase; }
+
+nav { flex: 1; padding: 16px 10px; overflow-y: auto; }
+.nav-section-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.11em; padding: 0 12px; margin: 16px 0 6px; }
+
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border-radius: 10px;
+  cursor: pointer; transition: all 0.22s ease;
+  position: relative; overflow: hidden;
+  color: var(--text2); font-size: 13px; font-weight: 500;
+  border: none; background: transparent; width: 100%;
+  text-align: left; margin-bottom: 2px;
+}
+.nav-item::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, var(--cyan), var(--purple));
+  opacity: 0; transition: opacity 0.22s;
+  border-radius: 0 2px 2px 0;
+}
+.nav-item:hover { background: rgba(0,200,255,0.07); color: var(--cyan); transform: translateX(2px); }
+.nav-item:hover::before { opacity: 0.5; }
+.nav-item.active { background: rgba(0,200,255,0.10); color: var(--cyan); }
+.nav-item.active::before { opacity: 1; }
+.nav-item .icon { width: 18px; text-align: center; font-size: 13px; }
+.nav-item .label { flex: 1; }
+.nav-badge {
+  font-size: 9px; font-weight: 700; padding: 2px 6px;
+  border-radius: 99px; background: rgba(239,68,68,0.15);
+  color: var(--red); border: 1px solid rgba(239,68,68,0.2);
+}
+
+.sidebar-footer { padding: 12px; border-top: 1px solid rgba(255,255,255,0.04); }
+.sys-card {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(0,200,255,0.07);
+  border-radius: 10px; padding: 12px; font-size: 11px;
+}
+.sys-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+}
+.sys-row:last-child { margin-bottom: 0; }
+.sys-key { color: var(--text3); }
+.sys-val { color: var(--cyan); font-family: var(--mono); }
+.sys-val.green { color: var(--green); }
+.sys-bar { height: 4px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; margin: 5px 0 10px; }
+.sys-bar-fill {
+  height: 100%; width: 62%;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  border-radius: 99px; box-shadow: 0 0 6px rgba(0,200,255,0.4);
+}
+
+/* ── LAYOUT ──────────────────────────────── */
+#app { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ── HEADER ──────────────────────────────── */
+#header {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 14px;
+  padding: 13px 22px;
+  background: rgba(7,9,16,0.9);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0,200,255,0.06);
+}
+.header-title h1 { font-size: 14px; font-weight: 600; color: var(--text); }
+.header-title .status { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulseDot 2s ease infinite; box-shadow: 0 0 6px rgba(34,197,94,0.8); }
+@keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(0.8);} }
+.status-label { font-size: 11px; color: var(--green); font-weight: 500; }
+.status-sep { color: var(--text3); font-size: 11px; }
+.live-tag { font-size: 11px; color: var(--text3); }
+.header-spacer { flex: 1; }
+.header-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 13px; border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: var(--text3); font-size: 12px; font-family: var(--font);
+  cursor: pointer; transition: border-color 0.2s;
+}
+.header-search:hover { border-color: rgba(0,200,255,0.2); }
+.header-btn {
+  position: relative; width: 36px; height: 36px; border-radius: 8px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; color: var(--text2);
+}
+.header-btn:hover { border-color: rgba(0,200,255,0.22); color: var(--cyan); }
+.header-btn .notif-count {
+  position: absolute; top: -4px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--red); color: #fff; font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 6px rgba(239,68,68,0.6);
+}
+.avatar {
+  width: 36px; height: 36px; border-radius: 8px;
+  background: linear-gradient(135deg, rgba(0,200,255,0.2), rgba(168,85,247,0.2));
+  border: 1px solid rgba(0,200,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--cyan); font-size: 13px;
+}
+#mobile-toggle {
+  display: none;
+  background: rgba(0,200,255,0.08); border: none;
+  color: var(--text2); font-size: 14px;
+  width: 36px; height: 36px; border-radius: 8px;
+  cursor: pointer; align-items: center; justify-content: center;
+  transition: color 0.2s;
+}
+#mobile-toggle:hover { color: var(--cyan); }
+
+/* ── MAIN CONTENT ────────────────────────── */
+main { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+.page { display: none; }
+.page.active { display: flex; flex-direction: column; gap: 18px; }
+
+footer {
+  padding: 12px 22px; text-align: center; font-size: 11px;
+  color: var(--text3); border-top: 1px solid rgba(255,255,255,0.03);
+}
+
+/* ── GLASS CARDS ─────────────────────────── */
+.glass {
+  background: var(--card); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+.glass2 {
+  background: var(--card2); backdrop-filter: blur(16px);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+}
+
+/* ── GRID ────────────────────────────────── */
+.grid-2   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3   { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+.grid-4   { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+
+/* ── STAT CARDS ──────────────────────────── */
+.stat-card { padding: 18px; position: relative; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+.stat-card::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top left, rgba(0,200,255,0.04), transparent 60%);
+  pointer-events: none;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); }
+.stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+.stat-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.stat-value { font-size: 28px; font-weight: 700; margin-bottom: 6px; font-family: var(--mono); }
+.stat-sub { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+.trend-up { color: #4ade80; font-size: 10px; }
+
+/* ── BUTTONS ─────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 17px; border-radius: 9px;
+  font-size: 13px; font-weight: 600; font-family: var(--font);
+  cursor: pointer; border: none; transition: all 0.25s ease;
+  text-decoration: none;
+}
+.btn-grad {
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  color: #fff; box-shadow: 0 2px 12px rgba(0,200,255,0.2);
+  position: relative; overflow: hidden;
+}
+.btn-grad::before { content: ''; position: absolute; inset: 0; background: rgba(255,255,255,0); transition: background 0.2s; }
+.btn-grad:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,255,0.35); }
+.btn-grad:hover::before { background: rgba(255,255,255,0.07); }
+.btn-grad:active { transform: translateY(0); }
+.btn-grad:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn-ghost {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: rgba(0,200,255,0.25); color: var(--cyan); }
+
+/* ── UPLOAD ──────────────────────────────── */
+.upload-zone {
+  border: 2px dashed rgba(0,200,255,0.2); border-radius: 12px;
+  background: rgba(0,200,255,0.022); padding: 34px 22px;
+  text-align: center; cursor: pointer; transition: all 0.3s ease; margin-bottom: 14px;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: rgba(0,200,255,0.5);
+  background: rgba(0,200,255,0.055);
+  box-shadow: inset 0 0 20px rgba(0,200,255,0.04), 0 0 20px rgba(0,200,255,0.07);
+}
+.upload-zone i { font-size: 28px; color: rgba(0,200,255,0.5); display: block; margin-bottom: 9px; }
+.upload-zone p { color: var(--text2); font-size: 13px; margin-bottom: 3px; }
+.upload-zone span { color: var(--text3); font-size: 11px; }
+.upload-file-name { color: var(--cyan); font-size: 11px; font-weight: 500; margin-top: 8px; display: none; }
+.upload-file-name.show { display: block; }
+.progress-wrap { margin-bottom: 14px; display: none; }
+.progress-wrap.show { display: block; }
+.progress-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+.progress-pct { color: var(--cyan); font-family: var(--mono); }
+.progress-bar { height: 5px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; }
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+  border-radius: 99px; width: 0%; transition: width 0.2s ease;
+  box-shadow: 0 0 6px rgba(0,200,255,0.4);
+}
+.analyzing-info { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--text3); font-size: 11px; }
+.spinner { width: 20px; height: 20px; border: 2px solid rgba(0,200,255,0.14); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Result */
+.result-placeholder {
+  aspect-ratio: 16/9; border-radius: 10px;
+  background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--text3); font-size: 12px;
+}
+.result-placeholder i { font-size: 26px; }
+.result-img-wrap {
+  position: relative; border-radius: 10px; overflow: hidden;
+  aspect-ratio: 16/9; display: none;
+}
+.result-img-wrap.show { display: block; }
+.result-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+.result-img-wrap .scan-overlay { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 8px rgba(0,200,255,0.5);
+  animation: scanDown 2.5s linear infinite;
+}
+@keyframes scanDown { 0%{top:0%;}100%{top:100%;} }
+.result-overlay-tl {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(0,0,0,0.72); border-radius: 6px;
+  padding: 4px 8px; display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600;
+}
+.result-overlay-tr {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(0,0,0,0.65); border: 1px solid rgba(0,200,255,0.3);
+  border-radius: 6px; padding: 4px 8px;
+  font-size: 10px; color: var(--cyan); font-family: var(--mono);
+}
+.bbox {
+  position: absolute; border: 1.5px solid; border-radius: 4px; font-size: 8px; font-weight: 600;
+}
+.bbox .bbox-label {
+  position: absolute; top: -14px; left: 0;
+  padding: 1px 5px; border-radius: 3px; font-size: 8px; white-space: nowrap;
+}
+.det-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.det-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 8px; padding: 7px 10px; font-size: 12px;
+}
+.det-row i { font-size: 11px; }
+.det-row .det-name { color: var(--text2); flex: 1; }
+.det-row .det-val { font-weight: 700; font-family: var(--mono); }
+
+/* ── PPE CARDS ───────────────────────────── */
+.veh-cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
+.veh-card {
+  background: rgba(13,21,38,0.7); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px; padding: 16px 12px; text-align: center;
+  transition: all 0.28s ease;
+}
+.veh-card:hover { transform: translateY(-2px); border-color: rgba(0,200,255,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+.veh-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 18px; }
+.veh-count { font-size: 24px; font-weight: 700; margin-bottom: 4px; font-family: var(--mono); }
+.veh-name { font-size: 11px; color: var(--text3); }
+.veh-bar { height: 4px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+.veh-bar-fill { height: 100%; border-radius: 99px; transition: width 1.2s ease; }
+.veh-pct { font-size: 9px; color: var(--text3); margin-top: 4px; }
+
+/* ── CHARTS ──────────────────────────────── */
+.chart-wrap { position: relative; height: 200px; }
+
+/* ── LIVE FEED ───────────────────────────── */
+.feed-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
+.feed-card { background: var(--card2); border: 1px solid var(--border2); border-radius: 12px; overflow: hidden; transition: all 0.25s; }
+.feed-card:hover { border-color: rgba(0,200,255,0.25); transform: translateY(-2px); }
+.feed-video {
+  aspect-ratio: 16/9;
+  background: radial-gradient(ellipse at 30% 40%, rgba(0,200,255,0.05) 0%, rgba(7,9,16,0.96) 70%);
+  position: relative; overflow: hidden;
+}
+.feed-grid-bg {
+  position: absolute; inset: 0;
+  background-image: linear-gradient(rgba(0,200,255,0.035) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,200,255,0.035) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.feed-offline {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 6px; color: var(--text3); font-size: 11px;
+  background: rgba(7,9,16,0.9);
+}
+.feed-offline i { font-size: 22px; }
+.feed-status-tl {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,0,0,0.72); border-radius: 5px;
+  padding: 3px 7px; font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; gap: 4px; letter-spacing: 0.04em;
+}
+.feed-cam-id {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(0,0,0,0.72); border-radius: 5px;
+  padding: 3px 7px; font-size: 9px; color: var(--text2); font-family: var(--mono);
+}
+.feed-count {
+  position: absolute; bottom: 8px; right: 8px;
+  background: rgba(0,0,0,0.72); border-radius: 5px;
+  padding: 3px 7px; font-size: 9px; color: var(--cyan); font-family: var(--mono);
+  display: flex; align-items: center; gap: 4px;
+}
+.feed-info { padding: 10px 14px 12px; }
+.feed-zone { font-size: 13px; font-weight: 500; color: var(--text); }
+.feed-meta { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+/* ── ALERTS ──────────────────────────────── */
+.alert-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-btn {
+  padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 500; font-family: var(--font);
+  cursor: pointer; border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(13,21,38,0.5); color: var(--text3); transition: all 0.2s;
+}
+.filter-btn.active, .filter-btn:hover { border-color: rgba(0,200,255,0.3); color: var(--cyan); background: rgba(0,200,255,0.08); }
+.filter-btn.f-critical.active { border-color: rgba(239,68,68,0.35); color: var(--red); background: rgba(239,68,68,0.1); }
+.filter-btn.f-warning.active { border-color: rgba(245,158,11,0.35); color: var(--amber); background: rgba(245,158,11,0.1); }
+.filter-btn.f-info.active { border-color: rgba(34,197,94,0.35); color: var(--green); background: rgba(34,197,94,0.1); }
+.alert-list { display: flex; flex-direction: column; gap: 10px; }
+.alert-item {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(13,21,38,0.55);
+  cursor: pointer; transition: all 0.2s;
+  border-left-width: 2px;
+}
+.alert-item:hover { background: rgba(13,21,38,0.85); }
+.alert-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.alert-body { flex: 1; }
+.alert-head { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+.alert-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.unread-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.alert-loc { font-size: 11px; color: var(--text3); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.alert-desc { font-size: 11px; color: var(--text2); }
+.alert-badge { font-size: 10px; padding: 3px 8px; border-radius: 99px; font-weight: 500; flex-shrink: 0; text-transform: capitalize; }
+
+/* ── REPORTS ─────────────────────────────── */
+.report-quick { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.report-quick-card {
+  padding: 16px; border: 1px solid rgba(0,200,255,0.07);
+  border-radius: 12px; background: rgba(13,21,38,0.5);
+  cursor: pointer; transition: all 0.2s;
+}
+.report-quick-card:hover { border-color: rgba(0,200,255,0.25); background: rgba(13,21,38,0.8); }
+.report-quick-icon { width: 38px; height: 38px; border-radius: 9px; background: rgba(0,200,255,0.1); display: flex; align-items: center; justify-content: center; color: var(--cyan); font-size: 14px; margin-bottom: 10px; }
+.report-quick-lbl { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.report-quick-desc { font-size: 10.5px; color: var(--text3); }
+.report-list { display: flex; flex-direction: column; gap: 8px; }
+.report-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 14px; border-radius: 10px;
+  background: rgba(13,21,38,0.55); border: 1px solid rgba(255,255,255,0.04); transition: all 0.2s;
+}
+.report-row:hover { background: rgba(13,21,38,0.85); border-color: rgba(255,255,255,0.07); }
+.report-type-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.report-info { flex: 1; }
+.report-name { font-size: 12.5px; font-weight: 500; color: var(--text); }
+.report-meta { font-size: 10.5px; color: var(--text3); margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+.report-dl { font-size: 11px; padding: 5px 12px; border-radius: 7px; }
+.gen-badge { font-size: 10px; color: var(--amber); display: flex; align-items: center; gap: 5px; }
+@keyframes blink { 0%,100%{opacity:1;}50%{opacity:0.35;} }
+.blink-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); animation: blink 1.4s ease infinite; }
+
+/* ── ZONES ───────────────────────────────── */
+.zone-list { display: flex; flex-direction: column; gap: 10px; }
+.zone-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 16px; border-radius: 12px;
+  background: rgba(13,21,38,0.55); border: 1px solid rgba(255,255,255,0.04); transition: all 0.2s;
+}
+.zone-row:hover { background: rgba(13,21,38,0.82); border-color: rgba(255,255,255,0.07); }
+.zone-info { flex: 1; }
+.zone-name { font-size: 13px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.zone-id { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+.zone-status-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; font-weight: 500; }
+.zone-details { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 14px; }
+.zone-details span { display: flex; align-items: center; gap: 4px; }
+.zone-cong { text-align: right; flex-shrink: 0; }
+.zone-cong-val { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+.zone-cong-bar { width: 80px; height: 4px; background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+.zone-cong-fill { height: 100%; border-radius: 99px; }
+
+/* ── SETTINGS ────────────────────────────── */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.settings-section { padding: 20px 22px; }
+.settings-section-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.settings-section-desc { font-size: 11px; color: var(--text3); margin-bottom: 16px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.setting-row:last-child { border-bottom: none; }
+.setting-lbl { font-size: 12.5px; color: var(--text); font-weight: 500; }
+.setting-sub { font-size: 10.5px; color: var(--text3); margin-top: 2px; }
+.toggle {
+  width: 42px; height: 22px; border-radius: 99px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  position: relative; cursor: pointer; transition: all 0.28s ease; flex-shrink: 0;
+}
+.toggle.on { background: rgba(0,200,255,0.28); border-color: rgba(0,200,255,0.5); box-shadow: 0 0 8px rgba(0,200,255,0.28); }
+.toggle::after {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #64748b; top: 2px; left: 3px; transition: all 0.28s ease;
+}
+.toggle.on::after { background: var(--cyan); left: 21px; box-shadow: 0 0 6px rgba(0,200,255,0.6); }
+.setting-slider-wrap { display: flex; align-items: center; gap: 10px; width: 60%; }
+.setting-slider-val { font-size: 12px; color: var(--cyan); font-family: var(--mono); width: 36px; text-align: right; flex-shrink: 0; }
+input[type="range"] {
+  flex: 1; appearance: none; -webkit-appearance: none;
+  height: 4px; background: #1e293b; border-radius: 5px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; background: var(--cyan); border-radius: 50%; cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; background: var(--cyan); border-radius: 50%; cursor: pointer; border: none; }
+
+/* ── TOOLTIPS ────────────────────────────── */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  background: rgba(6,10,20,0.96); color: var(--cyan);
+  border: 1px solid rgba(0,200,255,0.22); font-size: 11px; padding: 4px 9px; border-radius: 6px;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; visibility: hidden; transition: opacity 0.18s ease; z-index: 200;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4); font-family: var(--font);
+}
+[data-tooltip]:hover::after { opacity: 1; visibility: visible; }
+
+/* ── ANIMATIONS ──────────────────────────── */
+@keyframes fadeInUp { from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);} }
+.fade-in { animation: fadeInUp 0.42s ease forwards; }
+.d1{animation-delay:0.04s;opacity:0;} .d2{animation-delay:0.09s;opacity:0;}
+.d3{animation-delay:0.14s;opacity:0;} .d4{animation-delay:0.19s;opacity:0;}
+.d5{animation-delay:0.24s;opacity:0;} .d6{animation-delay:0.29s;opacity:0;}
+
+/* ── OVERLAY / MOBILE ────────────────────── */
+#overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:99; }
+#overlay.show { display:block; }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media (max-width:1100px) { .veh-cards{grid-template-columns:repeat(3,1fr);} .feed-grid{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:900px) {
+  .grid-4{grid-template-columns:1fr 1fr;} .settings-grid{grid-template-columns:1fr;}
+  .report-quick{grid-template-columns:1fr 1fr;} .veh-cards{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:768px) {
+  #sidebar{transform:translateX(-100%);} #sidebar.open{transform:translateX(0);box-shadow:8px 0 32px rgba(0,0,0,0.7);}
+  #app{margin-left:0;} #mobile-toggle{display:flex;} .header-search{display:none;}
+  .grid-2{grid-template-columns:1fr;} .feed-grid{grid-template-columns:1fr;}
+}
+@media (max-width:580px) { .grid-4{grid-template-columns:1fr;} .veh-cards{grid-template-columns:1fr 1fr;} .report-quick{grid-template-columns:1fr;} main{padding:14px;} }
+</style>
+</head>
+<body>
+
+<!-- ════ SIDEBAR ════ -->
+<aside id="sidebar">
+  <div class="logo-area">
+    <div class="logo-icon"><i class="fa-solid fa-helmet-safety"></i></div>
+    <div>
+      <div class="logo-title">SafetyAI Monitor</div>
+      <div class="logo-ver">YOLOv10x · v2.4.1</div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-section-label">Monitoring</div>
+    <button class="nav-item active" data-page="dashboard">
+      <i class="fa-solid fa-gauge-high icon"></i>
+      <span class="label">Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="live">
+      <i class="fa-solid fa-circle-dot icon"></i>
+      <span class="label">Live Feed</span>
+      <span class="nav-badge">5</span>
+    </button>
+    <button class="nav-item" data-page="analytics">
+      <i class="fa-solid fa-chart-line icon"></i>
+      <span class="label">Analytics</span>
+    </button>
+    <button class="nav-item" data-page="reports">
+      <i class="fa-solid fa-file-lines icon"></i>
+      <span class="label">Reports</span>
+    </button>
+    <button class="nav-item" data-page="zones">
+      <i class="fa-solid fa-map-location-dot icon"></i>
+      <span class="label">Zones</span>
+    </button>
+
+    <div class="nav-section-label">System</div>
+    <button class="nav-item" data-page="alerts">
+      <i class="fa-solid fa-bell icon"></i>
+      <span class="label">Alerts</span>
+      <span class="nav-badge" id="alert-nav-badge">3</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <i class="fa-solid fa-gear icon"></i>
+      <span class="label">Settings</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="sys-card">
+      <div class="sys-row">
+        <span class="sys-key">AI Model</span>
+      </div>
+      <div class="sys-row" style="margin-bottom:4px;">
+        <span class="sys-key">GPU Usage</span>
+        <span class="sys-val">62%</span>
+      </div>
+      <div class="sys-bar"><div class="sys-bar-fill"></div></div>
+      <div class="sys-row">
+        <span class="sys-key">Uptime</span>
+        <span class="sys-val" style="color:#94a3b8;">7d 14h 32m</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div id="overlay"></div>
+
+<!-- ════ MAIN APP ════ -->
+<div id="app">
+
+  <header id="header">
+    <button id="mobile-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <div class="header-title">
+      <h1 id="page-title">Construction Site Safety Detection</h1>
+      <div class="status">
+        <div class="status-dot"></div>
+        <span class="status-label">Online</span>
+        <span class="status-sep">·</span>
+        <span class="live-tag">Live Detection Active</span>
+      </div>
+    </div>
+    <div class="header-spacer"></div>
+    <div class="header-search" data-tooltip="Search zones, cameras...">
+      <i class="fa-solid fa-magnifying-glass"></i> Search...
+    </div>
+    <div class="header-btn" data-tooltip="Notifications" onclick="navigate('alerts')">
+      <i class="fa-solid fa-bell"></i>
+      <span class="notif-count">3</span>
+    </div>
+    <div class="avatar" data-tooltip="Admin User">
+      <i class="fa-solid fa-user"></i>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ═══════ DASHBOARD ═══════ -->
+    <section id="page-dashboard" class="page active">
+
+      <div class="grid-4">
+        <div class="glass2 stat-card fade-in d1">
+          <div class="stat-label">Workers On Site
+            <div class="stat-icon" style="background:rgba(0,200,255,0.1);"><i class="fa-solid fa-person-digging" style="color:var(--cyan);"></i></div>
+          </div>
+          <div class="stat-value" style="color:var(--cyan);" data-counter="128">0</div>
+          <div class="stat-sub"><i class="fa-solid fa-arrow-trend-up trend-up"></i><span style="color:#4ade80;">+8</span>&nbsp;from last shift</div>
+        </div>
+        <div class="glass2 stat-card fade-in d2">
+          <div class="stat-label">PPE Compliance
+            <div class="stat-icon" style="background:rgba(34,197,94,0.1);"><i class="fa-solid fa-helmet-safety" style="color:var(--green);"></i></div>
+          </div>
+          <div class="stat-value" style="color:var(--green);" data-counter="82">0</div>
+          <div class="stat-sub"><span style="color:#4ade80;">+6%</span>&nbsp;vs last week</div>
+        </div>
+        <div class="glass2 stat-card fade-in d3">
+          <div class="stat-label">Violations Today
+            <div class="stat-icon" style="background:rgba(239,68,68,0.1);"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i></div>
+          </div>
+          <div class="stat-value" style="color:var(--red);" data-counter="7">0</div>
+          <div class="stat-sub"><span style="color:var(--red);">+3</span>&nbsp;since morning</div>
+        </div>
+        <div class="glass2 stat-card fade-in d4">
+          <div class="stat-label">Active Cameras
+            <div class="stat-icon" style="background:rgba(168,85,247,0.1);"><i class="fa-solid fa-video" style="color:var(--purple);"></i></div>
+          </div>
+          <div class="stat-value" style="color:var(--purple);" data-counter="5">0</div>
+          <div class="stat-sub"><span style="color:var(--text3);">1 offline</span>&nbsp;· 6 total</div>
+        </div>
+      </div>
+
+      <!-- Upload + Result -->
+      <div class="grid-2">
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-cloud-arrow-up" style="color:var(--cyan);"></i> Upload &amp; Analyze</div>
+          <div class="upload-zone" id="upload-zone">
+            <i class="fa-solid fa-file-image"></i>
+            <p>Drag &amp; drop an image or video</p>
+            <span>Supports JPG, PNG, MP4, AVI</span>
+            <div class="upload-file-name" id="upload-fname"><i class="fa-solid fa-check"></i> <span id="fname-text"></span></div>
+            <input type="file" id="file-input" accept="image/*,video/*" style="display:none;" />
+          </div>
+          <div class="progress-wrap" id="progress-wrap">
+            <div class="progress-header">
+              <span>Analyzing with YOLOv10x...</span>
+              <span class="progress-pct" id="progress-pct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+            <div class="analyzing-info"><div class="spinner"></div><span>Running AI detection model...</span></div>
+          </div>
+          <button class="btn btn-grad" id="analyze-btn" style="width:100%;" disabled onclick="startAnalysis()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze
+          </button>
+        </div>
+
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-image" style="color:var(--purple);"></i> Detection Results</div>
+          <div class="result-placeholder" id="result-placeholder">
+            <i class="fa-solid fa-photo-film"></i>
+            <span>Upload an image to see preview</span>
+          </div>
+          <div class="result-img-wrap" id="result-img-wrap">
+            <img id="result-img" src="" alt="Detection result" />
+            <div class="bbox" style="top:18%;left:12%;width:22%;height:32%;border-color:#00c8ff;box-shadow:0 0 8px rgba(0,200,255,0.3);">
+              <div class="bbox-label" style="background:rgba(0,200,255,0.2);color:#00c8ff;">Helmet ✓ 0.94</div>
+            </div>
+            <div class="bbox" style="top:32%;left:56%;width:16%;height:24%;border-color:#ef4444;box-shadow:0 0 8px rgba(239,68,68,0.3);">
+              <div class="bbox-label" style="background:rgba(239,68,68,0.2);color:#ef4444;">No Helmet ✗ 0.87</div>
+            </div>
+            <div class="bbox" style="top:52%;left:28%;width:28%;height:30%;border-color:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.3);">
+              <div class="bbox-label" style="background:rgba(34,197,94,0.2);color:#22c55e;">Vest ✓ 0.91</div>
+            </div>
+            <div class="scan-overlay" id="scan-overlay" style="display:none;"><div class="scan-line"></div></div>
+            <div class="result-overlay-tl" id="res-tl" style="display:none;">
+              <div class="status-dot"></div><span style="color:#22c55e;font-size:10px;font-weight:600;">Detection Complete</span>
+            </div>
+            <div class="result-overlay-tr" id="res-tr" style="display:none;">5 objects</div>
+          </div>
+          <div class="det-grid" id="det-grid" style="display:none;">
+            <div class="det-row"><i class="fa-solid fa-helmet-safety" style="color:var(--cyan);"></i><span class="det-name">Helmets</span><span class="det-val" style="color:var(--cyan);" data-counter="3">0</span></div>
+            <div class="det-row"><i class="fa-solid fa-vest" style="color:var(--green);"></i><span class="det-name">Safety Vests</span><span class="det-val" style="color:var(--green);" data-counter="4">0</span></div>
+            <div class="det-row"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i><span class="det-name">No Helmet</span><span class="det-val" style="color:var(--red);" data-counter="1">0</span></div>
+            <div class="det-row"><i class="fa-solid fa-person" style="color:var(--purple);"></i><span class="det-name">Workers</span><span class="det-val" style="color:var(--purple);" data-counter="5">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid-2">
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-chart-bar" style="color:var(--cyan);"></i> PPE Detections (Today)</div>
+          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-chart-line" style="color:var(--purple);"></i> Weekly Safety Trend</div>
+          <div class="chart-wrap"><canvas id="lineChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- PPE Breakdown -->
+      <div class="glass" style="padding:22px;">
+        <div class="card-title"><i class="fa-solid fa-helmet-safety" style="color:var(--cyan);"></i> PPE Detection Breakdown</div>
+        <div class="veh-cards">
+          <div class="veh-card">
+            <div class="veh-icon" style="background:rgba(0,200,255,0.12);border:1px solid rgba(0,200,255,0.2);"><i class="fa-solid fa-helmet-safety" style="color:var(--cyan);"></i></div>
+            <div class="veh-count" style="color:var(--cyan);" data-counter="102">0</div>
+            <div class="veh-name">Hardhat</div>
+            <div class="veh-bar"><div class="veh-bar-fill" style="width:80%;background:linear-gradient(90deg,var(--cyan),rgba(0,200,255,0.4));"></div></div>
+            <div class="veh-pct">80%</div>
+          </div>
+          <div class="veh-card">
+            <div class="veh-icon" style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.2);"><i class="fa-solid fa-vest" style="color:var(--green);"></i></div>
+            <div class="veh-count" style="color:var(--green);" data-counter="95">0</div>
+            <div class="veh-name">Safety Vest</div>
+            <div class="veh-bar"><div class="veh-bar-fill" style="width:74%;background:linear-gradient(90deg,var(--green),rgba(34,197,94,0.4));"></div></div>
+            <div class="veh-pct">74%</div>
+          </div>
+          <div class="veh-card">
+            <div class="veh-icon" style="background:rgba(168,85,247,0.12);border:1px solid rgba(168,85,247,0.2);"><i class="fa-solid fa-person" style="color:var(--purple);"></i></div>
+            <div class="veh-count" style="color:var(--purple);" data-counter="128">0</div>
+            <div class="veh-name">Workers</div>
+            <div class="veh-bar"><div class="veh-bar-fill" style="width:100%;background:linear-gradient(90deg,var(--purple),rgba(168,85,247,0.4));"></div></div>
+            <div class="veh-pct">Total</div>
+          </div>
+          <div class="veh-card">
+            <div class="veh-icon" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.2);"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i></div>
+            <div class="veh-count" style="color:var(--red);" data-counter="26">0</div>
+            <div class="veh-name">No Helmet</div>
+            <div class="veh-bar"><div class="veh-bar-fill" style="width:20%;background:linear-gradient(90deg,var(--red),rgba(239,68,68,0.4));"></div></div>
+            <div class="veh-pct">20%</div>
+          </div>
+          <div class="veh-card">
+            <div class="veh-icon" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.2);"><i class="fa-solid fa-ban" style="color:var(--amber);"></i></div>
+            <div class="veh-count" style="color:var(--amber);" data-counter="35">0</div>
+            <div class="veh-name">Violations</div>
+            <div class="veh-bar"><div class="veh-bar-fill" style="width:27%;background:linear-gradient(90deg,var(--amber),rgba(245,158,11,0.4));"></div></div>
+            <div class="veh-pct">27%</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ═══════ LIVE FEED ═══════ -->
+    <section id="page-live" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:600;color:var(--text);">Live Camera Feed</h2>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px;">Real-time PPE safety detection across all site zones</p>
+        </div>
+        <div class="glass" style="padding:7px 14px;display:flex;align-items:center;gap:8px;">
+          <div class="status-dot"></div>
+          <span style="font-size:12px;color:var(--green);font-weight:500;">5/6 Cameras Active</span>
+        </div>
+      </div>
+      <div class="feed-grid" id="feed-grid"></div>
+    </section>
+
+    <!-- ═══════ ANALYTICS ═══════ -->
+    <section id="page-analytics" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:600;">Construction Safety Analytics</h2>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px;">PPE compliance and safety insights across all zones</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-grad" style="padding:6px 14px;font-size:12px;">24h</button>
+          <button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;">7d</button>
+          <button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;">30d</button>
+        </div>
+      </div>
+      <div class="grid-4">
+        <div class="glass2 stat-card">
+          <div class="stat-label">PPE Compliance<div class="stat-icon" style="background:rgba(34,197,94,0.1);"><i class="fa-solid fa-helmet-safety" style="color:var(--green);"></i></div></div>
+          <div class="stat-value" style="color:var(--green);">82%</div>
+          <div class="stat-sub" style="color:var(--green);">+6% from last week</div>
+        </div>
+        <div class="glass2 stat-card">
+          <div class="stat-label">Workers Detected<div class="stat-icon" style="background:rgba(0,200,255,0.1);"><i class="fa-solid fa-user" style="color:var(--cyan);"></i></div></div>
+          <div class="stat-value" style="color:var(--cyan);">320</div>
+          <div class="stat-sub">Today total</div>
+        </div>
+        <div class="glass2 stat-card">
+          <div class="stat-label">Safety Violations<div class="stat-icon" style="background:rgba(239,68,68,0.1);"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i></div></div>
+          <div class="stat-value" style="color:var(--red);">18</div>
+          <div class="stat-sub">No Helmet / No Vest</div>
+        </div>
+        <div class="glass2 stat-card">
+          <div class="stat-label">Detection Accuracy<div class="stat-icon" style="background:rgba(168,85,247,0.1);"><i class="fa-solid fa-chart-line" style="color:var(--purple);"></i></div></div>
+          <div class="stat-value" style="color:var(--purple);">91%</div>
+          <div class="stat-sub">YOLO Model mAP</div>
+        </div>
+      </div>
+      <div class="glass" style="padding:22px;">
+        <div class="card-title"><i class="fa-solid fa-chart-area" style="color:var(--cyan);"></i> PPE Detection Trends (24h)</div>
+        <div class="chart-wrap"><canvas id="areaChart"></canvas></div>
+      </div>
+      <div class="grid-2">
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-chart-bar" style="color:var(--amber);"></i> Compliance vs Violations (Weekly)</div>
+          <div class="chart-wrap"><canvas id="peakChart"></canvas></div>
+        </div>
+        <div class="glass" style="padding:22px;">
+          <div class="card-title"><i class="fa-solid fa-chart-pie" style="color:var(--cyan);"></i> PPE Distribution</div>
+          <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ REPORTS ═══════ -->
+    <section id="page-reports" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:600;">Safety Reports Center</h2>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px;">Download and generate PPE safety reports</p>
+        </div>
+        <button class="btn btn-grad"><i class="fa-solid fa-plus"></i> Generate Report</button>
+      </div>
+      <div class="report-quick">
+        <div class="report-quick-card">
+          <div class="report-quick-icon"><i class="fa-solid fa-helmet-safety"></i></div>
+          <div class="report-quick-lbl">PPE Compliance Report</div>
+          <div class="report-quick-desc">Daily helmet & vest compliance stats</div>
+        </div>
+        <div class="report-quick-card">
+          <div class="report-quick-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div class="report-quick-lbl">Violation Summary</div>
+          <div class="report-quick-desc">Safety violations by zone & time</div>
+        </div>
+        <div class="report-quick-card">
+          <div class="report-quick-icon"><i class="fa-solid fa-person-digging"></i></div>
+          <div class="report-quick-lbl">Worker Detection Log</div>
+          <div class="report-quick-desc">All worker detections with timestamps</div>
+        </div>
+      </div>
+      <div class="glass" style="padding:22px;">
+        <div class="card-title"><i class="fa-solid fa-clock-rotate-left" style="color:var(--purple);"></i> Recent Reports</div>
+        <div class="report-list" id="report-list"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ ZONES ═══════ -->
+    <section id="page-zones" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-size:16px;font-weight:600;">Construction Zone Management</h2>
+          <p style="font-size:11px;color:var(--text3);margin-top:3px;">Safety status and worker activity per zone</p>
+        </div>
+        <button class="btn btn-ghost"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      </div>
+      <div class="glass" style="padding:22px;">
+        <div class="card-title"><i class="fa-solid fa-map-location-dot" style="color:var(--cyan);"></i> Active Zones</div>
+        <div class="zone-list" id="zone-list"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ ALERTS ═══════ -->
+    <section id="page-alerts" class="page">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <h2 style="font-size:16px;font-weight:600;">Safety Alerts</h2>
+          <span id="unread-count" style="font-size:10px;color:var(--red);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);padding:3px 8px;border-radius:99px;font-weight:600;">3 new</span>
+        </div>
+        <button class="btn btn-ghost" onclick="markAllRead()"><i class="fa-solid fa-check-double"></i> Mark All Read</button>
+      </div>
+      <div class="glass" style="padding:22px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+          <div class="alert-filters">
+            <button class="filter-btn active" onclick="filterAlerts(this,'all')">All</button>
+            <button class="filter-btn f-critical" onclick="filterAlerts(this,'critical')">Critical</button>
+            <button class="filter-btn f-warning" onclick="filterAlerts(this,'warning')">Warning</button>
+            <button class="filter-btn f-info" onclick="filterAlerts(this,'info')">Info</button>
+          </div>
+        </div>
+        <div class="alert-list" id="alert-list"></div>
+      </div>
+    </section>
+
+    <!-- ═══════ SETTINGS ═══════ -->
+    <section id="page-settings" class="page">
+      <div>
+        <h2 style="font-size:16px;font-weight:600;">System Settings</h2>
+        <p style="font-size:11px;color:var(--text3);margin-top:3px;">Configure AI detection and system preferences</p>
+      </div>
+      <div class="settings-grid">
+        <div class="glass settings-section">
+          <div class="settings-section-title"><i class="fa-solid fa-helmet-safety" style="color:var(--cyan);"></i> Detection Settings</div>
+          <div class="settings-section-desc">AI model and PPE safety detection configuration</div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Real-time Detection</div><div class="setting-sub">Process live construction site feeds continuously</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Worker Counting</div><div class="setting-sub">Track total workers on site</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">PPE Detection</div><div class="setting-sub">Detect helmet and safety vest usage</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Safety Violation Alerts</div><div class="setting-sub">Trigger alerts for missing PPE</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Detection Confidence</div><div class="setting-sub">Minimum confidence threshold</div></div>
+            <div class="setting-slider-wrap">
+              <input type="range" min="0" max="100" value="82" oninput="this.nextElementSibling.textContent=this.value+'%'" />
+              <span class="setting-slider-val">82%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass settings-section">
+          <div class="settings-section-title"><i class="fa-solid fa-bell" style="color:var(--amber);"></i> Notifications</div>
+          <div class="settings-section-desc">Safety alerts and PPE violation notifications</div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Critical Safety Alerts</div><div class="setting-sub">Get notified on serious safety violations</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">PPE Violation Alerts</div><div class="setting-sub">Alert when helmet or vest is missing</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Camera Offline Alerts</div><div class="setting-sub">Notify when a camera feed is lost</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Daily Safety Report</div><div class="setting-sub">Receive end-of-day safety summary</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Violation Threshold</div><div class="setting-sub">Trigger alert above this level</div></div>
+            <div class="setting-slider-wrap">
+              <input type="range" min="0" max="100" value="75" oninput="this.nextElementSibling.textContent=this.value+'%'" />
+              <span class="setting-slider-val">75%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass settings-section">
+          <div class="settings-section-title"><i class="fa-solid fa-server" style="color:var(--purple);"></i> System</div>
+          <div class="settings-section-desc">AI model performance and processing settings</div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">GPU Acceleration</div><div class="setting-sub">Use GPU for faster detection inference</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Auto-scale Processing</div><div class="setting-sub">Adjust resources based on detection load</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Cloud Backup</div><div class="setting-sub">Store safety detection results in cloud</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Storage Retention</div><div class="setting-sub">How long to keep detection results</div></div>
+            <div class="setting-slider-wrap">
+              <input type="range" min="1" max="90" value="30" oninput="this.nextElementSibling.textContent=this.value+'d'" />
+              <span class="setting-slider-val">30d</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass settings-section">
+          <div class="settings-section-title"><i class="fa-solid fa-display" style="color:var(--green);"></i> Display</div>
+          <div class="settings-section-desc">Visualization and detection display preferences</div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Show Bounding Boxes</div><div class="setting-sub">Display PPE detection boxes on feed</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Show Confidence Scores</div><div class="setting-sub">Display confidence % on detected PPE</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Risk Heatmap Overlay</div><div class="setting-sub">Show unsafe zones heatmap</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="setting-row">
+            <div><div class="setting-lbl">Refresh Rate</div><div class="setting-sub">Auto-refresh interval in seconds</div></div>
+            <div class="setting-slider-wrap">
+              <input type="range" min="1" max="60" value="5" oninput="this.nextElementSibling.textContent=this.value+'s'" />
+              <span class="setting-slider-val">5s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button class="btn btn-grad"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        <button class="btn btn-ghost">Reset to Defaults</button>
+      </div>
+    </section>
+
+  </main>
+  <footer>Construction Safety AI &copy; 2026 &nbsp;·&nbsp; PPE Monitoring Active &nbsp;·&nbsp; YOLOv10x Detection Engine</footer>
+</div>
+
+<script>
+// ─── NAVIGATION ────────────────────────────────────
+const pageTitles = {
+  dashboard: 'Construction Site Safety Detection',
+  live:      'Live Site Monitoring',
+  analytics: 'Safety Analytics',
+  reports:   'Safety Reports Center',
+  zones:     'Construction Zone Management',
+  alerts:    'Safety Alerts & Notifications',
+  settings:  'System Settings'
+};
+let chartsInitialized = {};
+
+function navigate(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === pageId));
+  document.getElementById('page-title').textContent = pageTitles[pageId];
+  closeSidebar();
+  if (pageId === 'analytics' && !chartsInitialized.analytics) { initAnalyticsCharts(); chartsInitialized.analytics = true; }
+  if (pageId === 'live'      && !chartsInitialized.live)      { renderFeed();           chartsInitialized.live = true; }
+  if (pageId === 'reports'   && !chartsInitialized.reports)   { renderReports();        chartsInitialized.reports = true; }
+  if (pageId === 'zones'     && !chartsInitialized.zones)     { renderZones();          chartsInitialized.zones = true; }
+  if (pageId === 'alerts'    && !chartsInitialized.alerts)    { renderAlerts();         chartsInitialized.alerts = true; }
+}
+
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.addEventListener('click', () => navigate(btn.dataset.page));
+});
+
+// ─── MOBILE SIDEBAR ───────────────────────────────
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+document.getElementById('overlay').addEventListener('click', closeSidebar);
+
+// ─── ANIMATED COUNTERS ─────────────────────────────
+function animateCounter(el, target, duration) {
+  const start = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target);
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+document.querySelectorAll('[data-counter]').forEach(el => {
+  animateCounter(el, parseInt(el.dataset.counter), 1400);
+});
+
+// ─── CHART DEFAULTS ────────────────────────────────
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.04)';
+Chart.defaults.font.family = 'Space Grotesk';
+Chart.defaults.font.size = 11;
+const tooltipPlugin = {
+  backgroundColor: 'rgba(6,10,20,0.96)', borderColor: 'rgba(0,200,255,0.2)', borderWidth: 1,
+  titleColor: '#e2e8f0', bodyColor: '#94a3b8', cornerRadius: 10, padding: 10,
+};
+
+// ─── DASHBOARD CHARTS ─────────────────────────────
+new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: ['00:00','04:00','08:00','12:00','16:00','20:00'],
+    datasets: [
+      { label: 'Helmet ✓', data: [45,20,120,98,150,80], backgroundColor: 'rgba(0,200,255,0.8)', borderRadius: 4, borderSkipped: false },
+      { label: 'Safety Vest ✓', data: [38,15,100,85,130,70], backgroundColor: 'rgba(34,197,94,0.75)', borderRadius: 4, borderSkipped: false },
+      { label: 'Workers', data: [60,30,160,140,180,95], backgroundColor: 'rgba(168,85,247,0.7)', borderRadius: 4, borderSkipped: false },
+      { label: 'No Helmet ✗', data: [12,6,35,28,50,22], backgroundColor: 'rgba(239,68,68,0.85)', borderRadius: 4, borderSkipped: false },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, barPercentage: 0.7, categoryPercentage: 0.75,
+    plugins: { legend: { labels: { boxWidth: 10, color: '#94a3b8' } }, tooltip: tooltipPlugin },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#4b5a6e' } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4b5a6e' } },
+    },
+  },
+});
+
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    datasets: [
+      { label: 'Workers Detected', data: [120,150,110,180,210,160,130], borderColor: '#00c8ff', backgroundColor: 'rgba(0,200,255,0.08)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Safety Violations', data: [15,22,10,30,40,18,12], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { boxWidth: 10, color: '#94a3b8' } }, tooltip: tooltipPlugin },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#4b5a6e' } },
+      y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4b5a6e' } },
+    },
+  },
+});
+
+// ─── ANALYTICS CHARTS ─────────────────────────────
+function initAnalyticsCharts() {
+  const h24 = Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
+  const mkData = (base,amp) => h24.map((_,i) => Math.max(0, Math.round(base + Math.sin(i/3)*amp + Math.random()*15)));
+  new Chart(document.getElementById('areaChart'), {
+    type: 'line',
+    data: {
+      labels: h24,
+      datasets: [
+        { label:'Zone A', data:mkData(80,60), borderColor:'#00c8ff', backgroundColor:'rgba(0,200,255,0.07)', fill:true, tension:0.4, pointRadius:0, borderWidth:1.5 },
+        { label:'Zone B', data:mkData(65,50), borderColor:'#a855f7', backgroundColor:'rgba(168,85,247,0.06)', fill:true, tension:0.4, pointRadius:0, borderWidth:1.5 },
+        { label:'Zone C', data:mkData(50,40), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.05)', fill:true, tension:0.4, pointRadius:0, borderWidth:1.5 },
+        { label:'Zone D', data:mkData(70,55), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, pointRadius:0, borderWidth:1.5 },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{labels:{boxWidth:10,color:'#94a3b8'}}, tooltip:tooltipPlugin },
+      scales:{ x:{grid:{display:false},ticks:{color:'#475569',maxTicksLimit:8}}, y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#475569'}} },
+    },
+  });
+  new Chart(document.getElementById('peakChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+      datasets: [
+        { label:'Compliant Workers', data:[80,85,78,90,88,72,65], backgroundColor:'rgba(34,197,94,0.75)', borderRadius:4 },
+        { label:'Violations',        data:[15,22,10,30,40,18,12], backgroundColor:'rgba(239,68,68,0.75)', borderRadius:4 },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, barPercentage:0.7, categoryPercentage:0.72,
+      plugins:{ legend:{labels:{boxWidth:10,color:'#94a3b8'}}, tooltip:tooltipPlugin },
+      scales:{ x:{grid:{display:false},ticks:{color:'#475569'}}, y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#475569'}} },
+    },
+  });
+  new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Hardhat ✓','Safety Vest ✓','No Hardhat ✗','No Vest ✗','Workers'],
+      datasets:[{
+        data:[102,95,26,33,128],
+        backgroundColor:['rgba(0,200,255,0.85)','rgba(34,197,94,0.85)','rgba(239,68,68,0.85)','rgba(245,158,11,0.85)','rgba(168,85,247,0.85)'],
+        borderColor:'rgba(0,0,0,0)', hoverOffset:6,
+      }],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'58%',
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:10,color:'#94a3b8',padding:12}}, tooltip:tooltipPlugin },
+    },
+  });
+}
+
+// ─── LIVE FEED ─────────────────────────────────────
+const cameras = [
+  { id:'CAM-01', zone:'Site Entrance – Gate A',    status:'live',    workers:14 },
+  { id:'CAM-02', zone:'Site Entrance – Gate B',    status:'live',    workers:8  },
+  { id:'CAM-03', zone:'Main Construction Area',    status:'live',    workers:42 },
+  { id:'CAM-04', zone:'Material Storage Zone',     status:'live',    workers:7  },
+  { id:'CAM-05', zone:'Scaffolding Area – Block C',status:'offline', workers:0  },
+  { id:'CAM-06', zone:'Basement Excavation',       status:'live',    workers:19 },
+];
+
+function renderFeed() {
+  const grid = document.getElementById('feed-grid');
+  grid.innerHTML = cameras.map((cam, i) => `
+    <div class="feed-card fade-in d${(i%6)+1}">
+      <div class="feed-video">
+        ${cam.status === 'live' ? `
+          <div class="feed-grid-bg"></div>
+          <div style="position:absolute;top:18%;left:12%;width:18%;height:28%;border:1.5px solid #00c8ff;border-radius:4px;box-shadow:0 0 8px rgba(0,200,255,0.3);">
+            <div style="position:absolute;top:-14px;left:0;background:rgba(0,200,255,0.2);color:#00c8ff;font-size:8px;padding:1px 5px;border-radius:3px;white-space:nowrap;">Helmet ✓</div>
+          </div>
+          <div style="position:absolute;top:38%;left:54%;width:14%;height:22%;border:1.5px solid #ef4444;border-radius:4px;box-shadow:0 0 8px rgba(239,68,68,0.3);">
+            <div style="position:absolute;top:-14px;left:0;background:rgba(239,68,68,0.2);color:#ef4444;font-size:8px;padding:1px 5px;border-radius:3px;white-space:nowrap;">No Helmet ✗</div>
+          </div>
+          <div class="scan-overlay"><div class="scan-line"></div></div>
+        ` : `
+          <div class="feed-offline"><i class="fa-solid fa-video-slash"></i><span>Camera Offline</span></div>
+        `}
+        <div class="feed-status-tl">
+          <div style="width:6px;height:6px;border-radius:50%;background:${cam.status==='live'?'#22c55e':'#ef4444'};${cam.status==='live'?'animation:pulseDot 2s ease infinite;box-shadow:0 0 6px rgba(34,197,94,0.7);':''}"></div>
+          <span style="color:${cam.status==='live'?'#22c55e':'#ef4444'};">${cam.status.toUpperCase()}</span>
+        </div>
+        <div class="feed-cam-id">${cam.id}</div>
+        ${cam.status==='live' ? `<div class="feed-count"><i class="fa-solid fa-person"></i><span id="cnt-${cam.id}">${cam.workers}</span></div>` : ''}
+      </div>
+      <div class="feed-info">
+        <div class="feed-zone">${cam.zone}</div>
+        <div class="feed-meta">${cam.id}${cam.status==='live'?`&nbsp;·&nbsp;<span style="color:var(--cyan);font-family:var(--mono);">${cam.workers} workers</span>`:'&nbsp;·&nbsp;Feed unavailable'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  cameras.filter(c => c.status === 'live').forEach(cam => {
+    setInterval(() => {
+      const el = document.getElementById('cnt-' + cam.id);
+      if (el) {
+        const cur = parseInt(el.textContent);
+        el.textContent = Math.max(0, cur + Math.floor(Math.random()*5-2));
+      }
+    }, 2800);
+  });
+}
+
+// ─── REPORTS ───────────────────────────────────────
+const reports = [
+  { id:'RPT-001', name:'Daily PPE Compliance Report',       date:'2026-04-12', size:'2.3 MB', type:'PDF',   status:'ready' },
+  { id:'RPT-002', name:'Helmet & Vest Compliance Analysis', date:'2026-04-10', size:'4.8 MB', type:'Excel', status:'ready' },
+  { id:'RPT-003', name:'Worker Detection Summary',          date:'2026-04-07', size:'7.5 MB', type:'PDF',   status:'ready' },
+  { id:'RPT-004', name:'Safety Violation Report',          date:'2026-04-01', size:'1.6 MB', type:'PDF',   status:'ready' },
+  { id:'RPT-005', name:'Weekly PPE Compliance Report',      date:'2026-03-28', size:'3.4 MB', type:'CSV',   status:'ready' },
+  { id:'RPT-006', name:'Real-time Detection Export',        date:'2026-04-12', size:'--',     type:'CSV',   status:'generating' },
+];
+const typeColors = { PDF:'#ef4444', Excel:'#22c55e', CSV:'#00c8ff' };
+const typeIcons  = { PDF:'fa-file-pdf', Excel:'fa-file-excel', CSV:'fa-file-csv' };
+
+function renderReports() {
+  document.getElementById('report-list').innerHTML = reports.map(r => `
+    <div class="report-row">
+      <div class="report-type-icon" style="background:${typeColors[r.type]}15;">
+        <i class="fa-solid ${typeIcons[r.type]}" style="color:${typeColors[r.type]};"></i>
+      </div>
+      <div class="report-info">
+        <div class="report-name">${r.name}</div>
+        <div class="report-meta">
+          <span>${r.id}</span><span>·</span><span>${r.date}</span><span>·</span><span>${r.size}</span>
+        </div>
+      </div>
+      ${r.status==='generating'
+        ? `<div class="gen-badge"><div class="blink-dot"></div> Generating...</div>`
+        : `<button class="btn btn-grad report-dl" onclick="simulateDownload(this)"><i class="fa-solid fa-download"></i> Download</button>`
+      }
+    </div>
+  `).join('');
+}
+
+function simulateDownload(btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Downloading...';
+  btn.disabled = true;
+  setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+}
+
+// ─── ZONES ─────────────────────────────────────────
+const zones = [
+  { id:'Z-01', name:'Site Entrance', cameras:2, workers:22, congestion:65, status:'high' },
+  { id:'Z-02', name:'Main Construction Area', cameras:2, workers:42, congestion:88, status:'critical' },
+  { id:'Z-03', name:'Material Storage', cameras:1, workers:7, congestion:30, status:'low' },
+  { id:'Z-04', name:'Scaffolding Area – Block C', cameras:1, workers:0, congestion:0, status:'low' },
+  { id:'Z-05', name:'Basement Excavation', cameras:1, workers:19, congestion:52, status:'moderate' },
+  { id:'Z-06', name:'Safety Briefing Zone', cameras:1, workers:14, congestion:40, status:'moderate' },
+];
+const statusCfg = {
+  low:      { color:'#22c55e', label:'Low',      bg:'rgba(34,197,94,0.12)' },
+  moderate: { color:'#f59e0b', label:'Moderate', bg:'rgba(245,158,11,0.12)' },
+  high:     { color:'#00c8ff', label:'High',     bg:'rgba(0,200,255,0.12)' },
+  critical: { color:'#ef4444', label:'Critical', bg:'rgba(239,68,68,0.12)' },
+};
+
+function renderZones() {
+  document.getElementById('zone-list').innerHTML = zones.map((z,i) => {
+    const cfg = statusCfg[z.status];
+    return `
+    <div class="zone-row fade-in d${(i%6)+1}">
+      <div class="zone-info">
+        <div class="zone-name">
+          ${z.name}
+          <span class="zone-id">${z.id}</span>
+          <span class="zone-status-badge" style="color:${cfg.color};background:${cfg.bg};border:1px solid ${cfg.color}25;">${cfg.label}</span>
+        </div>
+        <div class="zone-details">
+          <span><i class="fa-solid fa-video" style="color:var(--text3);"></i>${z.cameras} camera${z.cameras!==1?'s':''}</span>
+          <span><i class="fa-solid fa-person" style="color:var(--text3);"></i>${z.workers} workers</span>
+        </div>
+      </div>
+      <div class="zone-cong">
+        <div class="zone-cong-val" style="color:${cfg.color};">${z.congestion}%</div>
+        <div class="zone-cong-bar"><div class="zone-cong-fill" style="width:${z.congestion}%;background:${cfg.color};box-shadow:0 0 6px ${cfg.color}50;transition:width 1s ease;"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── ALERTS ────────────────────────────────────────
+const alerts = [
+  { id:1, type:'critical', title:'No Helmet Detected', location:'Zone Z-02 · CAM-03', time:'2 min ago', desc:'Worker without helmet detected in main construction area.', color:'#ef4444', icon:'fa-triangle-exclamation', read:false },
+  { id:2, type:'critical', title:'No Safety Vest', location:'Zone Z-02 · CAM-03', time:'5 min ago', desc:'Worker missing safety vest detected near scaffolding.', color:'#ef4444', icon:'fa-vest', read:false },
+  { id:3, type:'warning',  title:'High Worker Density', location:'Zone Z-02', time:'12 min ago', desc:'Worker count exceeds safe zone capacity.', color:'#f59e0b', icon:'fa-users', read:false },
+  { id:4, type:'info',     title:'Camera Offline', location:'Zone Z-04 · CAM-05', time:'1 hr ago', desc:'Scaffolding Area camera lost connection.', color:'#00c8ff', icon:'fa-video-slash', read:true },
+  { id:5, type:'info',     title:'Shift Started', location:'All Zones', time:'2 hr ago', desc:'Morning shift started. 128 workers detected on site.', color:'#22c55e', icon:'fa-circle-check', read:true },
+];
+
+let activeFilter = 'all';
+
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  const filtered = activeFilter === 'all' ? alerts : alerts.filter(a => a.type === activeFilter);
+  list.innerHTML = filtered.map(a => `
+    <div class="alert-item" onclick="markRead(${a.id})"
+      style="border-left-color:${!a.read ? a.color : 'rgba(255,255,255,0.04)'};border-color:${!a.read ? a.color+'28' : 'rgba(255,255,255,0.04)'};">
+      <div class="alert-icon" style="background:${a.color}15;">
+        <i class="fa-solid ${a.icon}" style="color:${a.color};"></i>
+      </div>
+      <div class="alert-body">
+        <div class="alert-head">
+          <span class="alert-title">${a.title}</span>
+          ${!a.read ? `<div class="unread-dot" style="background:${a.color};"></div>` : ''}
+        </div>
+        <div class="alert-loc"><i class="fa-solid fa-location-dot" style="color:${a.color}80;"></i> ${a.location} · ${a.time}</div>
+        <div class="alert-desc">${a.desc}</div>
+      </div>
+      <span class="alert-badge" style="color:${a.color};background:${a.color}15;border:1px solid ${a.color}22;">${a.type}</span>
+    </div>
+  `).join('');
+
+  const unread = alerts.filter(a => !a.read).length;
+  const badge = document.getElementById('unread-count');
+  badge.textContent = unread + ' new';
+  badge.style.display = unread > 0 ? '' : 'none';
+  const navBadge = document.getElementById('alert-nav-badge');
+  if (navBadge) { navBadge.textContent = unread; navBadge.style.display = unread > 0 ? '' : 'none'; }
+}
+
+function markRead(id) {
+  const a = alerts.find(x => x.id === id);
+  if (a) a.read = true;
+  renderAlerts();
+}
+function markAllRead() { alerts.forEach(a => a.read = true); renderAlerts(); }
+function filterAlerts(btn, filter) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active'); activeFilter = filter; renderAlerts();
+}
+
+// ─── UPLOAD + ANALYSIS ─────────────────────────────
+const uploadZone    = document.getElementById('upload-zone');
+const fileInput     = document.getElementById('file-input');
+const analyzeBtn    = document.getElementById('analyze-btn');
+const progressWrap  = document.getElementById('progress-wrap');
+const progressFill  = document.getElementById('progress-fill');
+const progressPct   = document.getElementById('progress-pct');
+const resultPlaceholder = document.getElementById('result-placeholder');
+const resultImgWrap = document.getElementById('result-img-wrap');
+const resultImg     = document.getElementById('result-img');
+const detGrid       = document.getElementById('det-grid');
+const scanOverlay   = document.getElementById('scan-overlay');
+const resTl = document.getElementById('res-tl');
+const resTr = document.getElementById('res-tr');
+const fnameEl       = document.getElementById('upload-fname');
+const fnameText     = document.getElementById('fname-text');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  fnameText.textContent = file.name;
+  fnameEl.classList.add('show');
+  analyzeBtn.disabled = false;
+  const reader = new FileReader();
+  reader.onload = e => {
+    resultImg.src = e.target.result;
+    resultPlaceholder.style.display = 'none';
+    resultImgWrap.classList.add('show');
+    resultImgWrap.style.opacity = '0.5';
+    detGrid.style.display = 'none';
+    scanOverlay.style.display = 'none';
+    resTl.style.display = 'none';
+    resTr.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function startAnalysis() {
+  analyzeBtn.disabled = true;
+  progressWrap.classList.add('show');
+  let p = 0;
+  const iv = setInterval(() => {
+    p += Math.random() * 14 + 3;
+    if (p >= 100) {
+      p = 100; clearInterval(iv);
+      progressFill.style.width = '100%'; progressPct.textContent = '100%';
+      setTimeout(showResults, 350);
+    } else {
+      progressFill.style.width = p + '%'; progressPct.textContent = Math.round(p) + '%';
+    }
+  }, 110);
+}
+
+function showResults() {
+  progressWrap.classList.remove('show');
+  resultImgWrap.style.opacity = '1';
+  scanOverlay.style.display = 'block';
+  resTl.style.display = 'flex'; resTr.style.display = 'block';
+  detGrid.style.display = 'grid';
+  analyzeBtn.disabled = false;
+  detGrid.querySelectorAll('[data-counter]').forEach(el => {
+    animateCounter(el, parseInt(el.dataset.counter), 1000);
+  });
+}
+</script>
+</body>
+</html>
